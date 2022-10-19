@@ -8,6 +8,7 @@
 
 const size_t N = 4096;
 const double dr = 1e-2;
+const double eps = 1e-5;
 
 using namespace std;
 
@@ -23,8 +24,21 @@ calcx(const particle &tmp) {
 }
 
 double
-calcv(const particle &tmp) {
+calcv2(const particle &tmp) {
     return pow(tmp.v[0], 2) + pow(tmp.v[1], 2) + pow(tmp.v[2], 2);
+}
+
+double
+calcPotential(const vector<particle> &parts, int steps, int i)
+{
+    double res = 0.0;
+    i += N * steps;
+    for(int j = N * steps; j < N * (steps+1); ++j) {
+        for(int b = 0; b < 3; ++b) {
+            res += parts[j].m * (parts[j].x[b] - parts[i].x[b]) / pow(pow((parts[j].x[b] - parts[i].x[b]), 2) + eps*eps, 3/2);
+        }
+    }
+    return res;
 }
 
 void
@@ -87,20 +101,21 @@ energy(vector<particle> &v) {
     double t = 0;
     double dt = 6.75493e-06;
     particle tmp;
-    double energy;
+    double kenergy, penergy;
 
     steps = v.size() / N;
     output << scientific << setprecision(8);
 
     for(int i = 0; i < steps; ++i) {
-        energy = 0;
+        kenergy = 0;
+        penergy = 0;
         t += dt;
         for(int j = 0; j < N; ++j) {
             tmp = v[i * N + j];
-            energy += calcv(tmp);
+            kenergy += 0.5 * tmp.m * calcv2(tmp);
+            penergy += calcPotential(v, i, j);
         }
-        output << t << " " << energy << endl;
-
+        output << t << " " << kenergy + penergy * 0.5 << endl;
     }
 }
 
