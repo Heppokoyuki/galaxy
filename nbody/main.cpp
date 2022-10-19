@@ -7,8 +7,8 @@
 #include <limits>
 #include <omp.h>
 
-const double eps = 1e-5;
-const double MAX_T = 1e-3;
+const double eps = 1e-2;
+const double MAX_T = 1;
 
 using namespace std;
 
@@ -40,15 +40,14 @@ printParts(const vector<particle> &parts, ostream &st)
 
 int main()
 {
-    int N, count;
+    size_t N, count;
     double t, dt, init_t;
     ifstream ifs("pl4k.dat");
     ofstream ofs("output.dat");
     ifs >> N >> init_t;
     vector<particle> parts(N);
-    vector<particle> bparts(N);
 
-    ofs << scientific << setprecision(5);
+    ofs << scientific << setprecision(8);
 
     dt = 1000;
     for(int i = 0; i < N; ++i) {
@@ -62,6 +61,10 @@ int main()
 
     t = 0.0;
     count = 0;
+    /* print initial info */
+    ofs << t << endl;
+    printParts(parts, ofs);
+
     while(t < MAX_T) {
         cout << "steps: " << count << endl;
         #pragma omp parallel for
@@ -77,11 +80,12 @@ int main()
                 parts[idx].v[base] = parts[idx].v[base] + calcPotential(parts, idx, base) * dt;
             }
         }
-
-        printParts(parts, ofs);
-
         t += dt;
         count++;
+        if(count % 10 == 0) {
+            ofs << t << endl;
+            printParts(parts, ofs);
+        }
     }
 
     cout << "total run: " << count << endl;

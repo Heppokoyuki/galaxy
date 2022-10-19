@@ -83,23 +83,21 @@ printMassDist(const vector<particle> &v, string filename)
 }
 
 void
-mass(const vector<particle> &v) {
+mass(const vector<double> &t, const vector<particle> &v) {
     vector<particle> m[10];
 
     for(int i = 0; i < 10; ++i) {
         for(int j = 0; j < N; ++j) {
             m[i].push_back(v[i * 400 * N + j]);
         }
-        printMassDist(m[i], "mass" + to_string(i) + ".dat");
+        printMassDist(m[i], "mass" + to_string(t[i]) + ".dat");
     }
 }
 
 void
-energy(vector<particle> &v) {
+energy(const vector<double> &t, const vector<particle> &v) {
     ofstream output("energy.dat");
     size_t steps;
-    double t = 0;
-    double dt = 6.75493e-06;
     particle tmp;
     double kenergy, penergy;
 
@@ -110,6 +108,7 @@ energy(vector<particle> &v) {
         kenergy = 0;
         penergy = 0;
         t += dt;
+
         for(int j = 0; j < N; ++j) {
             tmp = v[i * N + j];
             kenergy += 0.5 * tmp.m * calcv2(tmp);
@@ -124,15 +123,21 @@ int main()
 {
     ifstream ifs("4701.dat");
     vector<particle> parts;
+    vector<double> time;
+    double t;
     particle tmp;
 
     while(!ifs.eof()) {
-        ifs >> tmp.m >> tmp.x[0] >> tmp.x[1] >> tmp.x[2] >> tmp.v[0] >> tmp.v[1] >> tmp.v[2];
-        parts.push_back(tmp);
+        ifs >> t;
+        time.push_back(t);
+        for(int i = 0; i < N; ++i) {
+            ifs >> tmp.m >> tmp.x[0] >> tmp.x[1] >> tmp.x[2] >> tmp.v[0] >> tmp.v[1] >> tmp.v[2];
+            parts.push_back(tmp);
+        }
     }
 
-    energy(parts);
-    mass(parts);
+    energy(time, parts);
+    mass(time, parts);
 
     return 0;
 }
