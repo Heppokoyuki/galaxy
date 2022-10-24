@@ -1,5 +1,7 @@
 set xlabel "t"
 set ylabel "E"
-set logscale y
-input="energy.dat"
-plot input using 1:2 ti "4701 steps" w lp
+penergy="penergy.dat"
+kenergy="kenergy.dat"
+plot penergy using 1:2 ti "potential energy" w lp
+replot kenergy using 1:2 ti "kinetic energy" w lp
+replot "< paste penergy.dat kenergy.dat" using 1:($2+$4) ti "sum" w lp

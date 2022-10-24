@@ -7,8 +7,8 @@
 #include <limits>
 #include <omp.h>
 
-const double eps = 1e-2;
-const double MAX_T = 1;
+const double eps = 0.01;
+const double MAX_T = 3;
 
 using namespace std;
 

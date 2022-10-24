@@ -29,20 +29,25 @@ calcv2(const particle &tmp) {
 }
 
 double
-calcPotential(const vector<particle> &parts, int steps, int i)
+distance(const double v1[3], const double v2[3])
+{
+    return sqrt(pow(v1[0] - v2[0], 2) + pow(v1[1] - v2[1], 2) + pow(v1[2] - v2[2], 2));
+}
+
+double
+calcPotential(const vector<particle> &parts, const int steps, int i)
 {
     double res = 0.0;
     i += N * steps;
     for(int j = N * steps; j < N * (steps+1); ++j) {
-        for(int b = 0; b < 3; ++b) {
-            res += parts[j].m * (parts[j].x[b] - parts[i].x[b]) / pow(pow((parts[j].x[b] - parts[i].x[b]), 2) + eps*eps, 3/2);
-        }
+        if(i == j) continue;
+        res += parts[j].m / distance(parts[j].x, parts[i].x);
     }
-    return res;
+    return -1.0 * res;
 }
 
 void
-printMassDist(const vector<particle> &v, string filename)
+printMassDist(const double &t, const vector<particle> &v, string filename)
 {
     ofstream output(filename);
     particle tmp;
@@ -73,6 +78,7 @@ printMassDist(const vector<particle> &v, string filename)
     sort(r.begin(), r.end());
 
     output << scientific << setprecision(8);
+    output << t << endl;
     index = 0;
     for(int i = 0; i < 10000; ++i) {
         for(; index < N; ++index) {
@@ -85,43 +91,46 @@ printMassDist(const vector<particle> &v, string filename)
 void
 mass(const vector<double> &t, const vector<particle> &v) {
     vector<particle> m[10];
+    size_t steps = t.size();
+    int factor = (int)steps / 10;
 
     for(int i = 0; i < 10; ++i) {
         for(int j = 0; j < N; ++j) {
-            m[i].push_back(v[i * 400 * N + j]);
+            m[i].push_back(v[factor * i * N + j]);
         }
-        printMassDist(m[i], "mass" + to_string(t[i]) + ".dat");
+        printMassDist(t[factor * i], m[i], "mass" + to_string(i) + ".dat");
     }
 }
 
 void
 energy(const vector<double> &t, const vector<particle> &v) {
-    ofstream output("energy.dat");
+    ofstream output1("penergy.dat"), output2("kenergy.dat");
     size_t steps;
     particle tmp;
     double kenergy, penergy;
 
-    steps = v.size() / N;
-    output << scientific << setprecision(8);
+    steps = t.size();
+    output1 << scientific << setprecision(8);
+    output2 << scientific << setprecision(8);
 
     for(int i = 0; i < steps; ++i) {
         kenergy = 0;
         penergy = 0;
-        t += dt;
 
         for(int j = 0; j < N; ++j) {
             tmp = v[i * N + j];
             kenergy += 0.5 * tmp.m * calcv2(tmp);
-            penergy += calcPotential(v, i, j);
+            penergy += 0.5 * tmp.m * calcPotential(v, i, j);
         }
-        output << t << " " << kenergy + penergy * 0.5 << endl;
+        output1 << t[i] << " " << penergy << endl;
+        output2 << t[i] << " " << kenergy << endl;
     }
 }
 
 
 int main()
 {
-    ifstream ifs("4701.dat");
+    ifstream ifs("output.dat");
     vector<particle> parts;
     vector<double> time;
     double t;
