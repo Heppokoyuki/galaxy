@@ -19,7 +19,7 @@ struct particle {
 };
 
 double
-calcx(const particle &tmp) {
+calcx2(const particle &tmp) {
     return pow(tmp.x[0], 2) + pow(tmp.x[1], 2) + pow(tmp.x[2], 2);
 }
 
@@ -31,7 +31,7 @@ calcv2(const particle &tmp) {
 double
 distance(const double v1[3], const double v2[3])
 {
-    return sqrt(pow(v1[0] - v2[0], 2) + pow(v1[1] - v2[1], 2) + pow(v1[2] - v2[2], 2));
+    return sqrt(pow(v1[0] - v2[0], 2) + pow(v1[1] - v2[1], 2) + pow(v1[2] - v2[2], 2) + eps*eps);
 }
 
 double
@@ -60,14 +60,14 @@ printMassDist(const double &t, const vector<particle> &v, string filename)
     }
 
     for(int i = 0; i < N; ++i) {
-        r.push_back(calcx(v[i]));
+        r.push_back(calcx2(v[i]));
     }
 
     moment = 0;
     som = 0;
     for(int i = 0; i < N; ++i) {
         tmp = v[i];
-        moment += tmp.m * calcx(tmp);
+        moment += tmp.m * calcx2(tmp);
         som += tmp.m;
     }
     cog = moment / som;
@@ -109,7 +109,7 @@ energy(const vector<double> &t, const vector<particle> &v) {
     particle tmp;
     double kenergy, penergy;
 
-    steps = t.size();
+    steps = t.size() - 1;
     output1 << scientific << setprecision(8);
     output2 << scientific << setprecision(8);
 
@@ -136,7 +136,7 @@ int main()
     double t;
     particle tmp;
 
-    while(!ifs.eof()) {
+    do {
         ifs >> t;
         time.push_back(t);
         for(int i = 0; i < N; ++i) {
@@ -144,6 +144,7 @@ int main()
             parts.push_back(tmp);
         }
     }
+    while(!ifs.eof());
 
     energy(time, parts);
     mass(time, parts);

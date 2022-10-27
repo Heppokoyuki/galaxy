@@ -7,8 +7,8 @@
 #include <limits>
 #include <omp.h>
 
-const double eps = 0.01;
-const double MAX_T = 3;
+const double eps = 0.00625;
+const double MAX_T = 1.5;
 
 using namespace std;
 
@@ -18,12 +18,26 @@ struct particle {
     double v[3];
 };
 
+
+template<typename T>
+inline
+T
+square(T e) {
+    return e * e;
+}
+
 double
-calcPotential(const vector<particle> &parts, int i, int b)
+calcDistance2(const double v1[3], const double v2[3])
+{
+    return square(v1[0] - v2[0]) + square(v1[1] - v2[1]) + square(v1[2] - v2[2]);
+}
+
+double
+calcPotential(const vector<particle> &parts, int i, int b, const vector<vector<double>> &dist)
 {
     double res = 0.0;
     for(int j = 0; j < parts.size(); ++j) {
-        res += parts[j].m * (parts[j].x[b] - parts[i].x[b]) / pow(pow((parts[j].x[b] - parts[i].x[b]), 2) + eps*eps, 3/2);
+        res += parts[j].m * (parts[j].x[b] - parts[i].x[b]) / pow(dist[j][i] + eps*eps, 1.5);
     }
     return res;
 }
@@ -42,10 +56,11 @@ int main()
 {
     size_t N, count;
     double t, dt, init_t;
-    ifstream ifs("pl4k.dat");
+    ifstream ifs("unisp4k.dat");
     ofstream ofs("output.dat");
     ifs >> N >> init_t;
     vector<particle> parts(N);
+    vector<vector<double>> distance(N, vector<double>(N));
 
     ofs << scientific << setprecision(8);
 
@@ -65,8 +80,29 @@ int main()
     ofs << t << endl;
     printParts(parts, ofs);
 
+    for(int idx = 0; idx < N; ++idx) {
+        for(int base = 0; base < 3; ++base) {
+            parts[idx].x[base] = parts[idx].x[base] + parts[idx].v[base] * 0.5 * dt;
+        }
+    }
+
     while(t < MAX_T) {
         cout << "steps: " << count << endl;
+
+        #pragma omp parallel for
+        for(int i = 0; i < N; ++i) {
+            for(int j = 0; j < N; ++j) {
+                distance[i][j] = calcDistance2(parts[i].x, parts[j].x);
+            }
+        }
+
+        #pragma omp parallel for
+        for(int idx = 0; idx < N; ++idx) {
+            for(int base = 0; base < 3; ++base) {
+                parts[idx].v[base] = parts[idx].v[base] + calcPotential(parts, idx, base, distance) * dt;
+            }
+        }
+
         #pragma omp parallel for
         for(int idx = 0; idx < N; ++idx) {
             for(int base = 0; base < 3; ++base) {
@@ -74,12 +110,6 @@ int main()
             }
         }
 
-        #pragma omp parallel for
-        for(int idx = 0; idx < N; ++idx) {
-            for(int base = 0; base < 3; ++base) {
-                parts[idx].v[base] = parts[idx].v[base] + calcPotential(parts, idx, base) * dt;
-            }
-        }
         t += dt;
         count++;
         if(count % 10 == 0) {
