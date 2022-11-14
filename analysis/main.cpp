@@ -8,7 +8,7 @@
 
 const size_t N = 4096;
 const double dr = 1e-2;
-const double eps = 1e-5;
+const double eps = 0.01;
 
 using namespace std;
 
