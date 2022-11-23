@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <limits>
 #include <omp.h>
+#include <sstream>
 
 const double eps = 0.01;
 const double MAX_T = 10;
@@ -18,6 +19,24 @@ struct particle {
     double v[3];
 };
 
+string
+getFileNameWithoutExt(string f)
+{
+    int ext_i = f.find_last_of(".");
+    return f.substr(0, ext_i);
+}
+
+string
+createFileName(string input_file)
+{
+    /* create time string */
+    time_t now = time(NULL);
+    struct tm *pnow = localtime(&now);
+    char time_string[64] = "";
+    sprintf(time_string, "%04d%02d%02d%02d%02d%02d", pnow->tm_year + 1900, pnow->tm_mon+1, pnow->tm_mday, pnow->tm_hour, pnow->tm_min, pnow->tm_sec);
+
+    return getFileNameWithoutExt(input_file) + '_' + ((string)time_string) + ".dat";
+}
 
 template<typename T>
 inline
@@ -56,9 +75,12 @@ int main()
 {
     size_t N, count;
     double t, dt, init_t;
-    ifstream ifs("unisp4k.dat");
-    ofstream ofs("output.dat");
+    string input_file_name = "unisp4k.dat";
+    ifstream ifs(input_file_name);
+    ofstream ofs(createFileName(input_file_name));
+
     ifs >> N >> init_t;
+
     vector<particle> parts(N);
     vector<vector<double>> distance(N, vector<double>(N));
 
@@ -113,7 +135,7 @@ int main()
         t += dt;
         count++;
         if(count % 10 == 0) {
-            ofs << t << endl;
+            ofs << N << t << endl;
             printParts(parts, ofs);
         }
     }
