@@ -7,8 +7,12 @@
 #include <limits>
 #include <omp.h>
 #include <sstream>
+#include <chrono>
+
+// #define DEBUG_TIME
 
 const double eps = 0.01;
+const double eps2 = eps*eps;
 const double MAX_T = 10;
 
 using namespace std;
@@ -38,29 +42,6 @@ createFileName(string input_file)
     return getFileNameWithoutExt(input_file) + '_' + ((string)time_string) + ".dat";
 }
 
-template<typename T>
-inline
-T
-square(T e) {
-    return e * e;
-}
-
-double
-calcDistance2(const double v1[3], const double v2[3])
-{
-    return square(v1[0] - v2[0]) + square(v1[1] - v2[1]) + square(v1[2] - v2[2]);
-}
-
-double
-calcPotential(const vector<particle> &parts, int i, int b, const vector<vector<double>> &dist)
-{
-    double res = 0.0;
-    for(int j = 0; j < parts.size(); ++j) {
-        res += parts[j].m * (parts[j].x[b] - parts[i].x[b]) / pow(dist[j][i] + eps*eps, 1.5);
-    }
-    return res;
-}
-
 void
 printParts(const vector<particle> &parts, ostream &st)
 {
@@ -71,18 +52,19 @@ printParts(const vector<particle> &parts, ostream &st)
     }
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    vector<string> args(argv, argv + argc);
     size_t N, count;
     double t, dt, init_t;
-    string input_file_name = "unisp4k.dat";
+    string input_file_name = args.at(2);
     ifstream ifs(input_file_name);
     ofstream ofs(createFileName(input_file_name));
 
     ifs >> N >> init_t;
 
     vector<particle> parts(N);
-    vector<vector<double>> distance(N, vector<double>(N));
+    double distance;
 
     ofs << scientific << setprecision(8);
 
@@ -91,7 +73,7 @@ int main()
         double m, x, y, z, vx, vy, vz;
         ifs >> m >> x >> y >> z >> vx >> vy >> vz;
         parts[i] = {m, {x, y, z}, {vx, vy, vz}};
-        dt = min({dt, abs(eps/vx), abs(eps/vy), abs(eps/vz)});
+        dt = min(dt, eps / sqrt(vx*vx + vy*vy + vz*vz));
     }
 
     cout << dt << endl;
@@ -101,7 +83,9 @@ int main()
     /* print initial info */
     ofs << t << endl;
     printParts(parts, ofs);
-
+    
+    omp_set_num_threads(stoi(args.at(1)));
+    #pragma omp parallel for
     for(int idx = 0; idx < N; ++idx) {
         for(int base = 0; base < 3; ++base) {
             parts[idx].x[base] = parts[idx].x[base] + parts[idx].v[base] * 0.5 * dt;
@@ -109,19 +93,23 @@ int main()
     }
 
     while(t < MAX_T) {
+#ifdef DEBUG_TIME
+        auto start = chrono::system_clock::now();
+#endif
         cout << "steps: " << count << endl;
 
         #pragma omp parallel for
         for(int i = 0; i < N; ++i) {
             for(int j = 0; j < N; ++j) {
-                distance[i][j] = calcDistance2(parts[i].x, parts[j].x);
-            }
-        }
+                double dx = parts[j].x[0] - parts[i].x[0];
+                double dy = parts[j].x[1] - parts[i].x[1];
+                double dz = parts[j].x[2] - parts[i].x[2];
+                double rsq = dx*dx + dy*dy + dz*dz;
+                double mrinv3 = parts[j].m * pow(rsq + eps2, -1.5) * dt;
 
-        #pragma omp parallel for
-        for(int idx = 0; idx < N; ++idx) {
-            for(int base = 0; base < 3; ++base) {
-                parts[idx].v[base] = parts[idx].v[base] + calcPotential(parts, idx, base, distance) * dt;
+                parts[i].v[0] += dx * mrinv3;
+                parts[i].v[1] += dy * mrinv3;
+                parts[i].v[2] += dz * mrinv3;
             }
         }
 
@@ -135,11 +123,14 @@ int main()
         t += dt;
         count++;
         if(count % 10 == 0) {
-            ofs << N << t << endl;
+            ofs << t << endl;
             printParts(parts, ofs);
         }
+#ifdef DEBUG_TIME
+        auto end = chrono::system_clock::now();
+        cout << "time: " << chrono::duration_cast<chrono::milliseconds>(end - start).count() << endl;
+#endif
     }
-
     cout << "total run: " << count << endl;
     return 0;
 }
