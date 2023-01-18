@@ -12,9 +12,9 @@
 
 // #define DEBUG_TIME
 
-const double eps = 0.01;
-const double eps2 = eps*eps;
-const double MAX_T = 10;
+const float eps = 0.01;
+const float eps2 = eps*eps;
+const float MAX_T = 10;
 
 using namespace std;
 
@@ -59,7 +59,7 @@ main(int argc, char *argv[])
 {
     vector<string> args(argv, argv + argc);
     size_t N, count;
-    double t, dt, init_t;
+    float t, dt, init_t;
     string input_file_name = args.at(2);
     ifstream ifs(input_file_name);
     ofstream ofs(createFileName(input_file_name));
@@ -68,14 +68,12 @@ main(int argc, char *argv[])
     __m256 XI, YI, ZI, EPS2;
     __m256 XJ, YJ, ZJ, MJ, RJ;
 
-    RJ = _mm256_zeroall();
-
     __m256 lift1, lift2;
     __m256 DX, DY, DZ;
     __m256 PHI;
     __m256 AX, AY, AZ;
 
-    PHI = _mm256_zeroall();
+    float buf[8][3];
 
     ifs >> N >> init_t;
     if(N % 8 != 0) {
@@ -102,6 +100,8 @@ main(int argc, char *argv[])
     /* print initial info */
     ofs << t << endl;
     printParts(parts, ofs);
+
+    _mm256_zeroall();
 
     for(int i = 0; i < N; i += 4) {
         XI = _mm256_set_ps(
@@ -172,10 +172,18 @@ main(int argc, char *argv[])
             RJ = _mm256_mul_ps(RJ, RJ);
             RJ = _mm256_mul_ps(RJ, MJ);
 
-            DX = _mm256_mul_ps(DX, RJ);
-            DY = _mm256_mul_ps(DY, RJ);
-            DZ = _mm256_mul_ps(DZ, RJ);
-
+            AX = _mm256_fmadd_ps(DX, RJ, AX);
+            AY = _mm256_fmadd_ps(DY, RJ, AY);
+            AZ = _mm256_fmadd_ps(DZ, RJ, AZ);
         }
+        DX = _mm256_castps128_ps256(_mm256_extractf128_ps(AX, 1));
+        AX = _mm256_add_ps(AX, DX);
+        _mm256_store_ps(buf[0], AX);
+        DY = _mm256_castps128_ps256(_mm256_extractf128_ps(AY, 1));
+        AY = _mm256_add_ps(AY, DY);
+        _mm256_store_ps(buf[1], AY);
+        DZ = _mm256_castps128_ps256(_mm256_extractf128_ps(AZ, 1));
+        AZ = _mm256_add_ps(AZ, DZ);
+        _mm256_store_ps(buf[2], AZ);
     }
 }
